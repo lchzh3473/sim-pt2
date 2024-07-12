@@ -1,5 +1,5 @@
 'use strict';
-self._i = ['钢琴块2模拟器', [1, 0, 2], 1614358089, 1678289943];
+self._i = ['钢琴块2模拟器', [1, 0, 3], 1614358089, 1720805063];
 document.oncontextmenu = e => e.preventDefault();
 const canvas = document.getElementById('stage');
 self.addEventListener('resize', resize);
@@ -49,6 +49,7 @@ const img = {};
 const aud = {};
 let startTime = 0;
 const loading = document.getElementById('cover-loading');
+if (!window.AudioContext) window.AudioContext = window.webkitAudioContext;
 const actx = new AudioContext();
 init();
 // 初始化
@@ -518,7 +519,7 @@ function gamePause(mod) {
   }
 }
 // 谱面测试
-function strToTiles(scores) {
+function strToTiles(scores = '') {
   const notes = [];
   const score1 = scores.replace(/(\d+<.+?>|[Q-Y]+|.*?\[[H-P]*\]|)[,;]/g, tile => {
     let type = 1;
@@ -529,17 +530,17 @@ function strToTiles(scores) {
     } else tile2 = tile.slice(0, tile.length - 1);
     for (const i of tile2.split(/[,;]/)) {
       if (!i) continue;
-      const lenstr = i.match(/(?<=\[).*(?=\])/);
-      const len = lenstr ? lenToNum(lenstr[0], 1) : lenToNum(i, 0);
+      const lenstr = i.match(/\[(.*)\]/);
+      const len = lenstr ? lenToNum(lenstr[1], 1) : lenToNum(i, 0);
       if (!len) throw new Error(`无效长度：${i}`);
       if (lenstr) {
-        const notearr = i.match(/.+(?=\[)/);
+        const notearr = i.match(/(.+)\[/);
         if (!notearr) throw new Error('空音符！');
-        if (i.match(/.(?=\()/) || i.match(/(?<=\)).+(?=\[)/) || i.match(/(?<=\])./)) throw new Error(`括号异常：${i}`);
-        const notee = notearr[0];
-        const aa = notee.match(/(?<=\().+(?=\))/);
+        if (i.match(/.\(/) || i.match(/\).+\[/) || i.match(/\]./)) throw new Error(`括号异常：${i}`);
+        const notee = notearr[1];
+        const aa = notee.match(/\((.+)\)/);
         if (aa) {
-          const cc = aa[0].match(/[~@&^$%!]/g);
+          const cc = aa[1].match(/[~@&^$%!]/g);
           if (cc) {
             const dd = cc[0];
             for (const j of cc) {
@@ -547,7 +548,7 @@ function strToTiles(scores) {
             }
             if ((dd === '&' || dd === '^') && cc.length !== 1) throw new Error('颤音过多'); // 逻辑还需完善
           }
-          for (const j of aa[0].split(/[.~@&^$%!]/)) {
+          for (const j of aa[1].split(/[.~@&^$%!]/)) {
             if (!table[j]) throw new Error(`无效音符：${j}`);
           }
         } else if (!table[notee]) throw new Error(`无效音符：${notee}`);
@@ -563,12 +564,12 @@ function strToTiles(scores) {
   return notes;
 }
 // 音频测试
-function bf(str, len) {
+function bf(str = '', len = 0) {
   let ms = len * 6e4 / bpm;
   // console.log(ms);
   // 检查有无括号
-  let str1 = str.match(/(?<=\().+(?=\))/);
-  if (str1) str1 = str1[0];
+  let str1 = str.match(/\((.+)\)/);
+  if (str1) str1 = str1[1];
   else str1 = str;
   const ch = str1.match(/[~@&^$%!]/);
   if (ch) {
@@ -577,24 +578,22 @@ function bf(str, len) {
     const num = zh.length;
     let tr = false;
     switch (sh) {
-      case '~':
-        ms /= num;
-        break;
       case '@':
-        ms *= (num * 0.4 - 1) / (num * 3 - 8) / (num - 1);
+        ms *= num === 2 ? 0.1 : 0.1 / (num - 2);
         break;
-      case '&':
-      case '^':
-        tr = true;
-        break;
+      case '~':
       case '$':
-        ms *= 0.99 / num;
+        ms *= 1.0 / num;
         break;
       case '%':
         ms *= 0.3 / (num - 1);
         break;
       case '!':
-        ms *= 0.1485 / (num - 1);
+        ms *= 0.15 / (num - 1);
+        break;
+      case '&':
+      case '^':
+        tr = true;
         break;
       default:
         throw new Error('未知错误');
@@ -609,7 +608,7 @@ function bf(str, len) {
         }, ms * idx);
       });
     } else if (num === 2) {
-      const ts = Math.floor(ms * 0.015);
+      const ts = Math.ceil(ms * 0.0125);
       if (table[zh[0]] && table[zh[1]]) {
         let flag = 0;
         for (let i = 0; i < ts; i++) {
@@ -617,7 +616,8 @@ function bf(str, len) {
           setTimeout(() => {
             bofang(zh[flag % 2]);
             flag++;
-          }, i / 0.015);
+          // }, i / 0.015);
+          }, i / 0.0125);
         }
       }
     } else throw new Error('颤音过多');
