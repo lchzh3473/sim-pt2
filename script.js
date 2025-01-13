@@ -96,7 +96,7 @@ const actx = new AudioContext();
 init();
 if (bpm.length) {
   info.forEach((v, i) => {
-    info[i].bpm = bpm[i] == null ? bpm[bpm.length - 1] : bpm[i];
+    v.bpm = bpm[i] == null ? bpm[bpm.length - 1] : bpm[i];
   });
 }
 const getSpeed = speedGen(info);
@@ -170,7 +170,7 @@ function init() {
           }
         }
         sheet.push(realscore);
-        info.push({ bpm: i.bpm, beats: i.baseBeats });
+        info.push({ bpm: parseInt(i.bpm) || parseInt(data.baseBpm) || 120, beats: i.baseBeats });
         console.log(i); // test
       }
       console.log(sheet); // 完整谱面
