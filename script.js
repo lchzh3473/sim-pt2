@@ -71,7 +71,7 @@ function speedGen(info = [{ bpm: 170, beats: 0.5 }, { bpm: 180, beats: 0.5 }, { 
       const newBpm = getNewBpm(lastBpm, lastBeats, currentBeats, loopTimes);
       infoBak[currentIndex] = { bpm: newBpm, beats: currentBeats };
     }
-    return infoBak[index].bpm;
+    return infoBak[index];
   };
 }
 function getNewBpm(lastBpm, lastBeats, currentBeats, loopTimes) {
@@ -81,10 +81,10 @@ function getNewBpm(lastBpm, lastBeats, currentBeats, loopTimes) {
   return Math.trunc(factor * tpm * currentBeats);
 }
 let currentBpm = 90;
+let currentBeats = 0.5;
 let key = 4; // 轨道数量
 let songName = '小星星';
 let soundfont = '8rock11e';
-let baseBeats = 0.5;
 const sheet = [];
 const info = [];
 const img = {};
@@ -172,7 +172,6 @@ function init() {
         sheet.push(realscore);
         info.push({ bpm: i.bpm, beats: i.baseBeats });
         console.log(i); // test
-        ({ baseBeats } = i);
       }
       console.log(sheet); // 完整谱面
       self.localStorage.setItem('pt2', JSON.stringify({ songName, json, bpm, key, soundfont }));
@@ -366,7 +365,7 @@ function draw() {
   // 绘制背景
   ctx.fillStyle = '#000';
   ctx.drawImage(getLevelImage(bgLevel), 0, 0, canvas.width, canvas.height);
-  currentBpm = getSpeed(speedLevel - 1);
+  ({ bpm: currentBpm, beats: currentBeats } = getSpeed(speedLevel - 1));
   if (bgLevelPos.length && bgLevelPos[0] < starthpos) {
     bgLevelPos.shift();
     bgLevel++;
@@ -578,7 +577,7 @@ function draw() {
   }
   if (isStarted && !isPaused) {
     const currentTime = Date.now();
-    starthpos += (currentTime - startTime) * currentBpm / baseBeats / 6e4;
+    starthpos += (currentTime - startTime) * currentBpm / currentBeats / 6e4;
     currentBpm -= -(currentTime - startTime) / 1000 * 0; // 加速度
     startTime = currentTime;
   }
@@ -634,8 +633,8 @@ function draw() {
   ctx.textAlign = 'start';
   ctx.strokeText(`${getRank(speedLevel - 1)}`, px * 0.6, px * 1.6);
   ctx.fillText(`${getRank(speedLevel - 1)}`, px * 0.6, px * 1.6);
-  ctx.strokeText(`${(currentBpm / baseBeats / 60).toFixed(3)}`, px * 0.6, px * 2.9);
-  ctx.fillText(`${(currentBpm / baseBeats / 60).toFixed(3)}`, px * 0.6, px * 2.9);
+  ctx.strokeText(`${(currentBpm / currentBeats / 60).toFixed(3)}`, px * 0.6, px * 2.9);
+  ctx.fillText(`${(currentBpm / currentBeats / 60).toFixed(3)}`, px * 0.6, px * 2.9);
   // for (const i in tiles) ctx.fillText(tiles[i].playing, px * 0.6, px * (4.2 + i * 1.3));
   requestAnimationFrame(draw);
 }
