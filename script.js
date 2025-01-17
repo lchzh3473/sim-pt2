@@ -1,5 +1,5 @@
 'use strict';
-self._i = ['钢琴块2模拟器', [1, 1, 0], 1614358089, 1736783338];
+self._i = ['钢琴块2模拟器', [1, 1, 1], 1614358089, 1737106704];
 document.oncontextmenu = e => e.preventDefault();
 const canvas = document.getElementById('stage');
 self.addEventListener('resize', resize);
@@ -59,8 +59,7 @@ const pitches = ['A-3', '#A-3', 'B-3', 'C-2', '#C-2', 'D-2', '#D-2', 'E-2', 'F-2
 const table = {};
 pitches.forEach(i => table[i] = true);
 //
-let bpm = [90, 95, 100];
-function speedGen(info = [{ bpm: 170, beats: 0.5 }, { bpm: 180, beats: 0.5 }, { bpm: 170, beats: 0.5 }]) {
+function speedGen(info) {
   const infoBak = JSON.parse(JSON.stringify(info));
   return function(index = 0) {
     while (index >= infoBak.length) {
@@ -80,6 +79,7 @@ function getNewBpm(lastBpm, lastBeats, currentBeats, loopTimes) {
   const factor = Math.max(1.3 - (tpm - constant) * 0.001, 1.04);
   return Math.trunc(factor * tpm * currentBeats);
 }
+let bpm = [];
 let currentBpm = 90;
 let currentBeats = 0.5;
 let key = 4; // 轨道数量
@@ -90,26 +90,21 @@ const info = [];
 const img = {};
 const aud = {};
 let startTime = 0;
+let /** @type {(index?:number)=>{bpm:number;beats:number}} */ getSpeed;
 const loading = document.getElementById('cover-loading');
 if (!window.AudioContext) window.AudioContext = window.webkitAudioContext;
 const actx = new AudioContext();
 init();
-if (bpm.length) {
-  info.forEach((v, i) => {
-    v.bpm = bpm[i] == null ? bpm[bpm.length - 1] : bpm[i];
-  });
-}
-const getSpeed = speedGen(info);
 // 初始化
 function init() {
   // 加载本地json谱面
-  const localJSON = JSON.parse(self.localStorage.getItem('pt2'));
-  console.log(localJSON);
-  if (localJSON) {
-    ({ songName, bpm, key, soundfont } = localJSON);
+  const localSave = JSON.parse(self.localStorage.getItem('pt2'));
+  console.log(localSave);
+  if (localSave) {
+    ({ songName, bpm, key, soundfont } = localSave);
     bpm = String(bpm).split(',').filter(a => a).map(n => parseInt(n));
     key = Math.max(0, key) || 4;
-    loadJson(localJSON.json);
+    loadJson(localSave.json);
   } else {
     // 加载默认json谱面
     const xhr = new XMLHttpRequest();
@@ -127,8 +122,9 @@ function init() {
     try {
       const data = JSON.parse(json);
       console.log(data); // test
-      console.log(data.baseBpm); // test
+      let baseBpm = data.baseBpm || 120;
       const musics = data.musics.sort((a, b) => a.id - b.id);
+      let baseBeats = musics[0].baseBeats || 0.5;
       console.log(musics); // test
       for (const i of musics) {
         erm.part = i.id;
@@ -170,10 +166,20 @@ function init() {
           }
         }
         sheet.push(realscore);
-        info.push({ bpm: parseInt(i.bpm) || parseInt(data.baseBpm) || 120, beats: i.baseBeats });
-        console.log(i); // test
+        if (i.bpm != null) ({ bpm: baseBpm, baseBeats } = i);
+        info.push({ bpm: Math.trunc(baseBpm / baseBeats * i.baseBeats), beats: i.baseBeats });
       }
       console.log(sheet); // 完整谱面
+      document.getElementById('cfg-bpm').placeholder = info.map(a => a.bpm);
+      if (bpm.length) {
+        info.forEach((v, i) => {
+          const ii = bpm.length - 1;
+          const bpm2 = Math.trunc(bpm[ii] / info[ii].beats * v.beats);
+          v.bpm = bpm[i] == null ? bpm2 : bpm[i];
+        });
+      }
+      console.log(info);
+      getSpeed = speedGen(info);
       self.localStorage.setItem('pt2', JSON.stringify({ songName, json, bpm, key, soundfont }));
       loadAudio();
     } catch (err) {
